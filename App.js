@@ -1,13 +1,34 @@
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet, Text, ScrollView, Dimensions } from "react-native";
+import {
+  View,
+  StyleSheet,
+  Text,
+  ScrollView,
+  Dimensions,
+  ActivityIndicator,
+} from "react-native";
 import * as Location from "expo-location";
+import Fontisto from '@expo/vector-icons/Fontisto';
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+const API_KEY = "21b3f9c0ebe840e8c9dc6ff332bcf332";
+
+const icons = {
+  Clouds : "cloudy",
+  Rain : 'rains',
+  Clear : 'day-sunny',
+  Atomosphere : 'cloudy-gusts',
+  Snow: 'snow',
+  Drizzle : 'rain',
+  Thunderstorm : 'lightning',
+}
+
 export default function App() {
   const [city, setCity] = useState("Loading..."); // city 데이터 저장
-  const [location, setLocation] = useState();
+  const [days, setDays] = useState([]);
   const [ok, setOk] = useState(true); // 위치 허용 권한에 필요한 데이터
-  const ask = async () => {
+  const getWeather = async () => {
     const { granted } = await Location.requestForegroundPermissionsAsync(); // 위치 설정
     if (!granted) {
       // 위치 허용하지않으면 false 로해서 나중에 슬픈얼굴 보여주기
@@ -21,9 +42,18 @@ export default function App() {
       { useGoogleMaps: false }
     );
     setCity(location[0].city); //location에서 city 정보가져오기
+    const { list } = await (
+      await fetch(
+        `https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&appid=${API_KEY}`
+      )
+    ).json();
+    const filteredList = list.filter(({ dt_txt }) =>
+      dt_txt.endsWith("00:00:00")
+    );
+    setDays(filteredList);
   };
   useEffect(() => {
-    ask();
+    getWeather();
   }, []);
 
   return (
@@ -37,18 +67,33 @@ export default function App() {
         showsHorizontalScrollIndicator={false} // 아래 바 제거
         contentContainerStyle={styles.weather}
       >
-        <View style={styles.day}>
-          <Text style={styles.temp}>27</Text>
-          <Text style={styles.description}>Sunny</Text>
-        </View>
-        <View style={styles.day}>
-          <Text style={styles.temp}>27</Text>
-          <Text style={styles.description}>Sunny</Text>
-        </View>
-        <View style={styles.day}>
-          <Text style={styles.temp}>27</Text>
-          <Text style={styles.description}>Sunny</Text>
-        </View>
+        {days.length === 0 ? (
+          <View style={styles.day}>
+            <ActivityIndicator
+              color="white"
+              size="large"
+              style={{ marginTop: 10 }}
+            />
+          </View>
+        ) : (
+          days.map((day, index) => (
+            <View key={index} style={styles.day}>
+              <View style={{ 
+                flexDirection : 'row' ,
+                 alignItems: 'center',
+                 width : '100%',
+                justifyContent : 'space-between'
+                 }}>
+              <Text style={styles.temp}>
+                {Math.round(day.main.temp - 273.15)}℃
+              </Text>
+              <Fontisto name={icons[day.weather[0].main]} size={40} color="white" />
+              </View>
+              <Text style={styles.description}>{day.weather[0].main}</Text>
+              <Text style={styles.tinyText}>{day.weather[0].description}</Text>
+            </View>
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -64,9 +109,9 @@ const styles = StyleSheet.create({
     backgroundColor: "tomato",
     justifyContent: "center",
     alignItems: "center",
-    borderBottomWidth: 2,
   },
   cityName: {
+    color : 'white',
     fontSize: 70,
     fontWeight: "500",
   },
@@ -75,15 +120,21 @@ const styles = StyleSheet.create({
   },
   day: {
     width: SCREEN_WIDTH,
-    alignItems: "center",
+    padding : 15,
   },
 
   temp: {
+    color : 'white',
     marginTop: 45,
-    fontSize: 170,
+    fontSize: 110,
   },
   description: {
+    color : 'white',
     marginTop: -20,
-    fontSize: 60,
+    fontSize: 50,
   },
+  tinyText: {
+    color : 'white',
+    fontSize : 20,
+  }
 });
